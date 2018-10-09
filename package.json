@@ -33,5 +33,6 @@
     "json5": "^2.1.0",
     "memory-fs": "^0.4.1",
     "resolve": "^1.8.1"
-  }
+  },
+  "devDependencies": {}
 }

@@ -4,6 +4,31 @@ const webpack = require("webpack");
 let installer = require("./installer");
 let utils = require("./utils");
 
+
+var depFromErr = function(err) {
+    if (!err) {
+        return undefined;
+    }
+
+    /**
+     * Supported package formats:
+     * - path
+     * - react-lite
+     * - @cycle/core
+     * - bootswatch/lumen/bootstrap.css
+     * - lodash.random
+     */
+    var matches = /(?:(?:Cannot resolve module)|(?:Can't resolve)) '([@\w\/\.-]+)' in/.exec(
+        err
+    );
+
+    if (!matches) {
+        return undefined;
+    }
+
+    return matches[1];
+};
+
 class NpmInstallPlugin {
     constructor(options) {
         this.preCompiler = null;
@@ -16,6 +41,7 @@ class NpmInstallPlugin {
 
     apply(compiler) {
         this.compiler = compiler;
+
         compiler.hooks.watchRun.tapAsync(
             "NpmInstallPlugin",
             this.preCompile.bind(this)
@@ -25,13 +51,31 @@ class NpmInstallPlugin {
             compiler.options.externals.unshift(this.resolveExternal.bind(this));
         }
 
-        compiler.hooks.afterResolvers.tap("NpmInstallPlugin", function(compiler) {
+        compiler.hooks.afterResolvers.tap("NpmInstallPlugin", compiler => {
             // Install loaders on demand
-            this.plugin("resolver loader", compiler);
+            compiler.resolverFactory.hooks.resolver.tap(
+                "loader",
+                "NpmInstallPlugin",
+                resolver => {
+                    resolver.hooks.module.tapAsync(
+                        "NpmInstallPlugin",
+                        this.resolveLoader.bind(this)
+                    );
+                }
+            );
 
             // Install project dependencies on demand
-            this.plugin("resolver normal", compiler);
-        }.bind(this))
+            compiler.resolverFactory.hooks.resolver.tap(
+                "normal",
+                "NpmInstallPlugin",
+                resolver => {
+                    resolver.hooks.module.tapAsync(
+                        "NpmInstallPlugin",
+                        this.resolveModule.bind(this)
+                    );
+                }
+            );
+        });
     }
 
     preCompile(compilation, next) {
@@ -93,39 +137,106 @@ class NpmInstallPlugin {
         if (!result) {
             return;
         }
-    
+
         var dep = installer.check(result.request);
-    
+
         if (dep) {
             var dev = this.options.dev;
-    
+
             if (typeof this.options.dev === "function") {
                 dev = !!this.options.dev(result.request, result.path);
             }
-    
+
             Object.keys(this.options.deps).forEach(k => {
                 if (k == dep) {
                     dep = [dep].concat(this.options.deps[k]);
                 }
-            })
-    
-            installer.install(dep, Object.assign({}, this.options, { dev: dev }));
+            });
+
+            installer.install(
+                dep,
+                Object.assign({}, this.options, { dev: dev })
+            );
         }
     }
 
-    plugin(name, compiler) {
-        compiler.resolverFactory._pluginCompat.call({
-            name: name,
-            fn: (resolver) => {
-                resolver.getHook("noResolve").tap("NpmInstallPlugin",  (request, error)=> {
-                    if (error) {
-                        this.install(request);
-                    }
-                });
-            },
-            names: new Set([name])
-        });
+    resolve(resolver, result, callback) {
+        var version = require("webpack/package.json").version;
+        var major = version.split(".").shift();
+
+        if (major === "4") {
+            return this.compiler.resolverFactory
+                .get(resolver)
+                .resolve(
+                    result.context || {},
+                    result.path,
+                    result.request,
+                    {},
+                    callback
+                );
+        }
+
+        throw new Error("Unsupported Webpack version: " + version);
+    }
+
+    resolveLoader(result, resolveContext, next) {
+        // Only install direct dependencies, not sub-dependencies
+        if (result.path.match("node_modules")) {
+            return next();
+        }
+
+        if (this.resolving[result.request]) {
+            return next();
+        }
+
+        this.resolving[result.request] = true;
+
+        this.resolve(
+            "loader",
+            result,
+            function(err, filepath) {
+                this.resolving[result.request] = false;
+
+                if (err) {
+                    var loader = utils.normalizeLoader(result.request);
+                    this.install(
+                        Object.assign({}, result, { request: loader })
+                    );
+                }
+
+                return next();
+            }.bind(this)
+        );
+    }
+
+    resolveModule(result, resolveContext, next) {
+        if (result.path.match("node_modules")) {
+            return next();
+        }
+
+        if (this.resolving[result.request]) {
+            return next();
+        }
+
+        this.resolving[result.request] = true;
+
+        this.resolve(
+            "normal",
+            result,
+            function(err, filepath) {
+                this.resolving[result.request] = false;
+
+                if (err) {
+                    this.install(
+                        Object.assign({}, result, { request: depFromErr(err) })
+                    );
+                }
+
+                return next();
+            }.bind(this)
+        );
     }
 }
+
 
 module.exports = NpmInstallPlugin;
