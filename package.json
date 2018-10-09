@@ -1,0 +1,37 @@
+{
+  "name": "npm-install-webpack4-plugin",
+  "version": "1.0.0-beta",
+  "description": "Webpack4 loader to automatically npm install & save dependencies.",
+  "main": "index.js",
+  "engines": {
+    "node": ">=8.9.4"
+  },
+  "files": [
+    "src"
+  ],
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ysk2014/npm-install-webpack4-plugin.git"
+  },
+  "author": {
+    "name": "claus",
+    "url": "https://github.com/ysk2014"
+  },
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/ysk2014/npm-install-webpack4-plugin/issues"
+  },
+  "homepage": "https://github.com/ysk2014/npm-install-webpack4-plugin#readme",
+  "peerDependencies": {
+    "webpack": "^4.0.0"
+  },
+  "dependencies": {
+    "cross-spawn": "^6.0.5",
+    "json5": "^2.1.0",
+    "memory-fs": "^0.4.1",
+    "resolve": "^1.8.1"
+  }
+}
