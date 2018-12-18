@@ -57,7 +57,7 @@ class NpmInstallPlugin {
                 "loader",
                 "NpmInstallPlugin",
                 resolver => {
-                    resolver.hooks.module.tapAsync(
+                    resolver.hooks.resolve.tapAsync(
                         "NpmInstallPlugin",
                         this.resolveLoader.bind(this)
                     );
