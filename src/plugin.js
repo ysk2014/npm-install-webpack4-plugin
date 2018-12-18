@@ -1,9 +1,8 @@
-const MemoryFS = require("memory-fs");
-const webpack = require("webpack");
+const MemoryFS = require('memory-fs');
+const webpack = require('webpack');
 
-let installer = require("./installer");
-let utils = require("./utils");
-
+let installer = require('./installer');
+let utils = require('./utils');
 
 var depFromErr = function(err) {
     if (!err) {
@@ -18,9 +17,7 @@ var depFromErr = function(err) {
      * - bootswatch/lumen/bootstrap.css
      * - lodash.random
      */
-    var matches = /(?:(?:Cannot resolve module)|(?:Can't resolve)) '([@\w\/\.-]+)' in/.exec(
-        err
-    );
+    var matches = /(?:(?:Cannot resolve module)|(?:Can't resolve)) '([@\w\/\.-]+)' in/.exec(err);
 
     if (!matches) {
         return undefined;
@@ -42,39 +39,22 @@ class NpmInstallPlugin {
     apply(compiler) {
         this.compiler = compiler;
 
-        compiler.hooks.watchRun.tapAsync(
-            "NpmInstallPlugin",
-            this.preCompile.bind(this)
-        );
+        compiler.hooks.watchRun.tapAsync('NpmInstallPlugin', this.preCompile.bind(this));
 
         if (Array.isArray(compiler.options.externals)) {
             compiler.options.externals.unshift(this.resolveExternal.bind(this));
         }
 
-        compiler.hooks.afterResolvers.tap("NpmInstallPlugin", compiler => {
+        compiler.hooks.afterResolvers.tap('NpmInstallPlugin', compiler => {
             // Install loaders on demand
-            compiler.resolverFactory.hooks.resolver.tap(
-                "loader",
-                "NpmInstallPlugin",
-                resolver => {
-                    resolver.hooks.resolve.tapAsync(
-                        "NpmInstallPlugin",
-                        this.resolveLoader.bind(this)
-                    );
-                }
-            );
+            compiler.resolverFactory.hooks.resolver.tap('loader', 'NpmInstallPlugin', resolver => {
+                resolver.hooks.resolve.tapAsync('NpmInstallPlugin', this.resolveLoader.bind(this));
+            });
 
             // Install project dependencies on demand
-            compiler.resolverFactory.hooks.resolver.tap(
-                "normal",
-                "NpmInstallPlugin",
-                resolver => {
-                    resolver.hooks.module.tapAsync(
-                        "NpmInstallPlugin",
-                        this.resolveModule.bind(this)
-                    );
-                }
-            );
+            compiler.resolverFactory.hooks.resolver.tap('normal', 'NpmInstallPlugin', resolver => {
+                resolver.hooks.resolve.tapAsync('NpmInstallPlugin', this.resolveModule.bind(this));
+            });
         });
     }
 
@@ -103,7 +83,7 @@ class NpmInstallPlugin {
 
     resolveExternal(context, request, callback) {
         // Only install direct dependencies, not sub-dependencies
-        if (context.match("node_modules")) {
+        if (context.match('node_modules')) {
             return callback();
         }
 
@@ -119,13 +99,11 @@ class NpmInstallPlugin {
         };
 
         this.resolve(
-            "normal",
+            'normal',
             result,
             function(err, filepath) {
                 if (err) {
-                    this.install(
-                        Object.assign({}, result, { request: depFromErr(err) })
-                    );
+                    this.install(Object.assign({}, result, { request: depFromErr(err) }));
                 }
 
                 callback();
@@ -143,7 +121,7 @@ class NpmInstallPlugin {
         if (dep) {
             var dev = this.options.dev;
 
-            if (typeof this.options.dev === "function") {
+            if (typeof this.options.dev === 'function') {
                 dev = !!this.options.dev(result.request, result.path);
             }
 
@@ -153,35 +131,26 @@ class NpmInstallPlugin {
                 }
             });
 
-            installer.install(
-                dep,
-                Object.assign({}, this.options, { dev: dev })
-            );
+            installer.install(dep, Object.assign({}, this.options, { dev: dev }));
         }
     }
 
     resolve(resolver, result, callback) {
-        var version = require("webpack/package.json").version;
-        var major = version.split(".").shift();
+        var version = require('webpack/package.json').version;
+        var major = version.split('.').shift();
 
-        if (major === "4") {
+        if (major === '4') {
             return this.compiler.resolverFactory
                 .get(resolver)
-                .resolve(
-                    result.context || {},
-                    result.path,
-                    result.request,
-                    {},
-                    callback
-                );
+                .resolve(result.context || {}, result.path, result.request, {}, callback);
         }
 
-        throw new Error("Unsupported Webpack version: " + version);
+        throw new Error('Unsupported Webpack version: ' + version);
     }
 
     resolveLoader(result, resolveContext, next) {
         // Only install direct dependencies, not sub-dependencies
-        if (result.path.match("node_modules")) {
+        if (result.path.match('node_modules')) {
             return next();
         }
 
@@ -192,16 +161,14 @@ class NpmInstallPlugin {
         this.resolving[result.request] = true;
 
         this.resolve(
-            "loader",
+            'loader',
             result,
             function(err, filepath) {
                 this.resolving[result.request] = false;
 
                 if (err) {
                     var loader = utils.normalizeLoader(result.request);
-                    this.install(
-                        Object.assign({}, result, { request: loader })
-                    );
+                    this.install(Object.assign({}, result, { request: loader }));
                 }
 
                 return next();
@@ -210,7 +177,7 @@ class NpmInstallPlugin {
     }
 
     resolveModule(result, resolveContext, next) {
-        if (result.path.match("node_modules")) {
+        if (result.path.match('node_modules')) {
             return next();
         }
 
@@ -221,15 +188,13 @@ class NpmInstallPlugin {
         this.resolving[result.request] = true;
 
         this.resolve(
-            "normal",
+            'normal',
             result,
             function(err, filepath) {
                 this.resolving[result.request] = false;
 
                 if (err) {
-                    this.install(
-                        Object.assign({}, result, { request: depFromErr(err) })
-                    );
+                    this.install(Object.assign({}, result, { request: depFromErr(err) }));
                 }
 
                 return next();
@@ -237,6 +202,5 @@ class NpmInstallPlugin {
         );
     }
 }
-
 
 module.exports = NpmInstallPlugin;
