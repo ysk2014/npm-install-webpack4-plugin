@@ -13,6 +13,7 @@ let defaultOptions = {
     peerDependencies: true,
     quiet: false,
     npm: 'npm',
+    registry: null,
     deps: {
         "less-loader": ["less"],
         "sass-loader": ["node-sass"],
@@ -158,6 +159,10 @@ module.exports.install = function install(deps, options) {
 
     if (options.quiet) {
         args.push("--silent", "--no-progress");
+    }
+
+    if (options.registry) {
+        args.push("--registry="+options.registry);
     }
 
     deps.forEach(function(dep) {
