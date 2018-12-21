@@ -48,12 +48,12 @@ class NpmInstallPlugin {
         compiler.hooks.afterResolvers.tap('NpmInstallPlugin', compiler => {
             // Install loaders on demand
             compiler.resolverFactory.hooks.resolver.tap('loader', 'NpmInstallPlugin', resolver => {
-                resolver.hooks.resolve.tapAsync('NpmInstallPlugin', this.resolveLoader.bind(this));
+                resolver.hooks.module.tapAsync('NpmInstallPlugin', this.resolveLoader.bind(this));
             });
 
             // Install project dependencies on demand
             compiler.resolverFactory.hooks.resolver.tap('normal', 'NpmInstallPlugin', resolver => {
-                resolver.hooks.resolve.tapAsync('NpmInstallPlugin', this.resolveModule.bind(this));
+                resolver.hooks.module.tapAsync('NpmInstallPlugin', this.resolveModule.bind(this));
             });
         });
     }
