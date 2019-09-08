@@ -1,3 +1,5 @@
+## npm-install-webpack4-plugin
+
 > 对`npm-install-webpack-plugin`的功能加强，额外添加两个参数`deps`, `registry`和`babel`
 
 ### registry
